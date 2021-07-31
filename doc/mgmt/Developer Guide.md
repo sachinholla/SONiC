@@ -532,14 +532,27 @@ The DB access layer implements a wrapper over the go-redis package enhancing the
 Translation apps should use Go "github.com/golang/glog" library for logging.
 
 Guidelines:
-- Use `glog.Infof()` for logging info messges. Info is enabled by default.
-- Use `glog.Errorf()` for logging error messages.
-- Use `glog.V(1).Infof()` for debug messages.
-Typically, payloads or DB data should be logged this way.
-This style of logging is called verbose logging and they are not enabled by default.
-Program should be started with a command line argument "-v" to enable verbosity levels.
-- Use `glog.V(2).Infof()` for more verbose developer traces.
-- Avoid using higer verbosity levels, fatal logs, `fmt.Printf()` and other logging libraries.
+
+* Use `glog.Infof()` for logging info messages. Info is enabled by default.
+  Info logs SHOULD be avoided as much as possible in the app code.
+  On-time initializations can be logged as info messages.
+  Function entry/exit, input/output values etc, decisions driven by user inputs etc MUST be logged as debugs.
+* Use `glog.Warningf()` for logging warning messages.
+  **Errors due to invalid user inputs MUST be logged as warnings**.
+  An error response should be returned to the client with sufficient data in such cases.
+* Use `glog.Errorf()` for logging error messages.
+  **Error logs are also written to syslog.**
+  Use it only for system level error condition - like DB error, I/O error etc.
+* Use `glog.V(1).Infof()` for debug messages.
+  This style of logging is called verbose logging and they are not enabled by default.
+  Program should be started with a command line argument "-v" to enable verbosity levels.
+  Typically apps can use this to log the actions being taken while processing the request.
+* Use `glog.V(2).Infof()` and `glog.V(3).Infof()` for more verbose developer traces.
+  Typically, function entry/exit, payloads or DB data should be logged this way.
+* Avoid using higher verbosity levels in the app code.
+  Framework uses them to dump more verbose data and usually results in lot of logs.
+  It may not be easy to comprehend them.
+* Never use `glog.Exit()`, `glog.Fatal()`, `fmt.Printf()` and other logging libraries.
 
 Examples:
 
@@ -549,13 +562,21 @@ import (
 )
 
 // INFO log
+glog.Info("Processing ACL ", aclName, ", type ", aclType)
 glog.Infof("Processing ACL %s, %v", aclName, aclType)
 
+// WARNING log
+glog.Warning("ACL ", aclName, " not found")
+glog.Warningf("ACL %s not found", aclName)
+
 // ERROR log
+glog.Error("GetEntry returned error: ", err)
 glog.Errorf("GetEntry returned error %v", err)
 
 // DEBUG log
-glog.V(1).Infof("Payload received = %v", data)
+glog.V(1).Info("Deleting ACL ", aclName, ", type ", aclType)
+glog.V(1).Infof("Processing ACL %s, %v", aclName, aclType)
+glog.V(3).Info("Received payload: ", data)
 
 // DEBUG log which requires lot of formatting.
 if glog.V(1) {
